@@ -14,7 +14,6 @@ from .discovery import discover_pages
 from .models import PageTarget
 from .order_flow import create_test_order
 from .woocommerce_email_capture import render_woocommerce_email_previews
-from .fallback_pages import create_fallback_order_email, create_fallback_order_received
 from .email_capture import fetch_order_email
 from .report import build_html_report, write_json
 from .utils import ensure_dir, normalize_url
@@ -144,10 +143,7 @@ async def run(arguments):
         targets = merge(manual(config), found, found_after) or initial_targets
 
         # Create exactly one order and reuse its receipt URL for every viewport.
-        # If checkout cannot be completed, add a local receipt mockup so layout checks still
-        # include the important "order received" screen.
         created_order = None
-        order_fallback = config.get('fallback_pages', {}).get('order_received', True)
         try:
             created_order = await create_test_order(page, config)
             if created_order:
@@ -156,10 +152,6 @@ async def run(arguments):
                 print('Тестовый заказ оформлен:', created_order.order_number or created_order.url)
         except Exception as exc:
             print('Ошибка автоматического оформления заказа:', exc)
-            if order_fallback:
-                fallback = create_fallback_order_received(output_dir)
-                targets = merge(targets, [PageTarget(fallback.name, fallback.path.resolve().as_uri(), fallback.kind, fallback.source)])
-                print('Добавлен макет страницы принятого заказа:', fallback.path)
 
         await context.close()
 
@@ -205,11 +197,6 @@ async def run(arguments):
                 print('Ошибка отрисовки писем WooCommerce:', exc)
             finally:
                 await context.close()
-
-        if (not email_targets_added and config.get('fallback_pages', {}).get('order_email', True)):
-            fallback = create_fallback_order_email(output_dir, created_order.order_number if created_order else '')
-            targets = merge(targets, [PageTarget(fallback.name, fallback.path.resolve().as_uri(), fallback.kind, fallback.source)])
-            print('Добавлен макет письма о заказе:', fallback.path)
 
         write_json(output_dir / 'pages.json', [item.to_dict() for item in targets])
         print('Найдено страниц:', len(targets))

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
@@ -25,11 +24,6 @@ class RenderedWooEmail:
     name: str
     path: Path
     email_type: str
-
-
-def _wrap_email(title: str, body: str, email_type: str, order_number: str = '') -> str:
-    order = f'<p><b>Тестовый заказ:</b> {html.escape(order_number)}</p>' if order_number else ''
-    return f'''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><style>body{{margin:0;background:#f3f4f6;font-family:Arial,sans-serif}}.mail-meta{{max-width:900px;margin:24px auto 0;padding:18px 22px;background:#fff;border:1px solid #ddd;border-radius:12px}}.mail-meta h1{{font-size:20px;margin:0 0 10px}}.mail-meta p{{margin:5px 0;color:#555;overflow-wrap:anywhere}}.mail-body{{max-width:900px;margin:14px auto 30px;background:#fff;overflow:hidden;border:1px solid #ddd;border-radius:12px}}@media(max-width:950px){{.mail-meta,.mail-body{{margin-left:10px;margin-right:10px}}}}</style></head><body><section class="mail-meta"><h1>{html.escape(title)}</h1><p><b>WooCommerce email type:</b> {html.escape(email_type)}</p>{order}</section><section class="mail-body">{body}</section></body></html>'''
 
 
 def _with_type(url: str, email_type: str) -> str:
@@ -78,11 +72,12 @@ async def render_woocommerce_email_previews(page, config: dict, output_dir: Path
         if status >= 400:
             raise RuntimeError(f'WooCommerce вернул HTTP {status} для шаблона {email_type}')
         await page.wait_for_timeout(int(settings.get('wait_after_preview_ms', 500)))
-        body = await page.locator('body').evaluate('el => el.innerHTML')
-        if 'Security check' in body or 'Invalid email type' in body:
-            raise RuntimeError(f'WooCommerce не смог отрисовать шаблон {email_type}: {body[:200]}')
+        html_content = await page.content()
+        body_text = await page.locator('body').inner_text()
+        if 'Security check' in body_text or 'Invalid email type' in body_text:
+            raise RuntimeError(f'WooCommerce не смог отрисовать шаблон {email_type}: {body_text[:200]}')
         title = f'Email WooCommerce — {name}'
         path = output_dir / f'woocommerce-email-{slugify(email_type)}.html'
-        path.write_text(_wrap_email(title, body, email_type, order_number), encoding='utf-8')
+        path.write_text(html_content, encoding='utf-8')
         rendered.append(RenderedWooEmail(title, path, email_type))
     return rendered
