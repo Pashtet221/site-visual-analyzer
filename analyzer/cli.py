@@ -14,6 +14,7 @@ from .discovery import discover_pages
 from .models import PageTarget
 from .order_flow import create_test_order
 from .woocommerce_email_capture import render_woocommerce_email_previews
+from .email_capture import fetch_order_email
 from .report import build_html_report, write_json
 from .utils import ensure_dir, normalize_url
 
@@ -153,6 +154,25 @@ async def run(arguments):
             print('Ошибка автоматического оформления заказа:', exc)
 
         await context.close()
+
+        # Fetch the real email sent by WooCommerce for the created order when IMAP is configured.
+        # It is saved as a local HTML page and then screenshotted together with all other targets.
+        if created_order and config.get('email_capture', {}).get('enabled'):
+            try:
+                print('Ожидание письма о заказе...')
+                email_path = fetch_order_email(config, created_order.order_number, output_dir)
+                if email_path:
+                    targets = merge(targets, [
+                        PageTarget(
+                            'Письмо о заказе',
+                            email_path.resolve().as_uri(),
+                            'order-email',
+                            'mailbox',
+                        )
+                    ])
+                    print('Письмо о заказе добавлено в отчёт:', email_path)
+            except Exception as exc:
+                print('Ошибка получения письма о заказе:', exc)
 
         # WooCommerce email previews are rendered directly from templates in wp-admin.
         # This avoids IMAP/SMTP polling and does not depend on mail delivery.

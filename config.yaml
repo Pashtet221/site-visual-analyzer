@@ -149,6 +149,24 @@ order_flow:
     # Можно указать тестовый email; IMAP-доступ к нему не нужен.
     email: ""
 
+
+# Получение реального письма, отправленного WooCommerce после оформления заказа.
+# Если включить этот блок и указать IMAP-доступ в credentials.yaml, анализатор дождётся
+# письма по номеру созданного заказа, сохранит его как локальную HTML-страницу
+# и сделает скриншоты письма в Desktop, Tablet и Mobile.
+email_capture:
+  enabled: false
+  imap_host: ""
+  imap_port: 993
+  mailbox: "INBOX"
+  username: ""
+  password: ""
+  wait_timeout_seconds: 90
+  poll_interval_seconds: 5
+  search_last_messages: 40
+  subject_contains: ""
+  sender_contains: ""
+
 # Отрисовка шаблонов писем WooCommerce напрямую через встроенный предпросмотр.
 # IMAP/SMTP не нужны: анализатор авторизуется в WordPress, открывает preview_woocommerce_mail
 # и сохраняет HTML основных WooCommerce email как локальные страницы для скриншотов.
