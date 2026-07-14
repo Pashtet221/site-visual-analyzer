@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from .capture import safe_goto
+from .capture import prepare_cart, safe_goto
 from .utils import normalize_url
 
 
@@ -32,10 +32,62 @@ async def _select(page, selector: str, value: str) -> None:
             pass
 
 
+async def _choose_first_available_shipping(page) -> None:
+    """Pick any available shipping method before payment submission."""
+    shipping_inputs = page.locator('input.shipping_method')
+    for index in range(await shipping_inputs.count()):
+        option = shipping_inputs.nth(index)
+        try:
+            if await option.is_visible() and await option.is_enabled():
+                await option.check(force=True)
+                await page.wait_for_timeout(1000)
+                return
+        except Exception:
+            continue
+
+    shipping_selects = page.locator('select.shipping_method')
+    for index in range(await shipping_selects.count()):
+        select = shipping_selects.nth(index)
+        try:
+            if not await select.is_visible() or not await select.is_enabled():
+                continue
+            value = await select.locator('option:not([disabled])').first.get_attribute('value')
+            if value:
+                await select.select_option(value)
+                await page.wait_for_timeout(1000)
+                return
+        except Exception:
+            continue
+
+
+async def _accept_required_checkout_checkboxes(page) -> None:
+    """Accept terms/privacy checkboxes required by WooCommerce and checkout plugins."""
+    selectors = [
+        '#terms',
+        '#privacy_policy',
+        'input[name="privacy_policy"]',
+        'input[name="privacy-policy"]',
+        'input[type="checkbox"][required]',
+        '.woocommerce-checkout input[type="checkbox"][aria-required="true"]',
+    ]
+    for selector in selectors:
+        checkboxes = page.locator(selector)
+        for index in range(await checkboxes.count()):
+            checkbox = checkboxes.nth(index)
+            try:
+                if await checkbox.is_enabled() and not await checkbox.is_checked():
+                    await checkbox.check(force=True)
+            except Exception:
+                continue
+
+
 async def create_test_order(page, config: dict) -> CreatedOrder | None:
     settings = config.get('order_flow', {})
     if not settings.get('enabled'):
         return None
+
+    # The receipt screenshot must come from the complete customer path: product → cart → checkout.
+    await prepare_cart(page, config)
 
     checkout_url = normalize_url(config['site']['base_url'], settings.get('checkout_url', '/checkout/'))
     await safe_goto(page, checkout_url, config)
@@ -67,15 +119,15 @@ async def create_test_order(page, config: dict) -> CreatedOrder | None:
         pass
     await page.wait_for_timeout(int(settings.get('wait_after_fill_ms', 4500)))
 
+    await _choose_first_available_shipping(page)
+
     payment_id = str(settings.get('payment_method', 'cod')).strip()
     payment = page.locator(f'#payment_method_{payment_id}').first
     if await payment.count():
         await payment.check(force=True)
         await page.wait_for_timeout(1000)
 
-    terms = page.locator('#terms').first
-    if await terms.count() and not await terms.is_checked():
-        await terms.check(force=True)
+    await _accept_required_checkout_checkboxes(page)
 
     place_order_selector = settings.get('place_order_selector', '#place_order')
     place_order = page.locator(place_order_selector).first
