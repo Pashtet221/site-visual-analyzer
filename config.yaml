@@ -1,0 +1,165 @@
+site:
+  base_url: "http://paveld9o.beget.tech/gelikon/"
+  output_dir: "report"
+  ignore_https_errors: true
+
+browser:
+  headless: true
+  timeout_ms: 30000
+  navigation_timeout_ms: 45000
+
+devices:
+  desktop: {width: 1440, height: 1000, device_scale_factor: 1, is_mobile: false, has_touch: false}
+  tablet:  {width: 768, height: 1024, device_scale_factor: 1, is_mobile: true, has_touch: true}
+  mobile:  {width: 390, height: 844, device_scale_factor: 1, is_mobile: true, has_touch: true}
+
+capture:
+  full_page: true
+  wait_after_load_ms: 1200
+  auto_scroll: true
+  scroll_step_px: 700
+  scroll_delay_ms: 120
+  disable_animations: true
+  hide_fixed_elements: false
+
+discovery:
+  enabled: true
+  use_sitemap: true
+  max_sitemap_urls: 2500
+  max_links_per_seed: 250
+  same_domain_only: true
+
+  # Эти страницы анализатор открывает во время поиска ссылок.
+  # После авторизации здесь находятся ссылки на конкретные заказы.
+  seed_paths:
+    - "/"
+    - "/shop/"
+    - "/my-account/"
+    - "/my-account/orders/"
+    - "/cart/"
+    - "/checkout/"
+
+  limits:
+    home: 1
+    shop: 1
+    category: 2
+    product: 2
+    cart: 1
+    checkout: 1
+    account: 1
+    orders: 1
+    order: 1
+    contacts: 1
+    blog: 1
+    other: 0
+
+  common_paths:
+    shop: ["/shop/", "/catalog/", "/product-category/"]
+    cart: ["/cart/", "/basket/"]
+    checkout: ["/checkout/", "/order/"]
+    account: ["/my-account/", "/account/"]
+    orders: ["/my-account/orders/"]
+    contacts: ["/contacts/", "/contact/"]
+    blog: ["/blog/", "/articles/"]
+
+manual_pages:
+  - name: "Главная"
+    url: "/"
+    kind: "home"
+
+  - name: "Корзина"
+    url: "/cart/"
+    kind: "cart"
+
+  - name: "Оформление заказа"
+    url: "/checkout/"
+    kind: "checkout"
+
+  - name: "Личный кабинет"
+    url: "/my-account/"
+    kind: "account"
+
+  - name: "Заказы"
+    url: "/my-account/orders/"
+    kind: "orders"
+
+auth:
+  enabled: true
+  login_url: "/my-account/"
+  username_selector: "#username"
+  password_selector: "#password"
+  submit_selector: "button[name='login']"
+  success_url_contains: "/my-account/"
+  wait_after_login_ms: 1800
+  cookies: []
+
+prepare:
+  add_product_to_cart:
+    enabled: true
+
+    # Можно оставить пустым — анализатор возьмёт первую найденную карточку товара.
+    # Для стабильного результата лучше указать конкретный простой товар.
+    product_url: ""
+
+    quantity: 1
+    add_to_cart_selector: "button.single_add_to_cart_button"
+    variation_selectors: {}
+    wait_after_add_ms: 2200
+
+interactions:
+  click_if_visible:
+    - "#cookie-accept"
+    - ".cookie-accept"
+    - ".popup-close"
+    - "[aria-label='Закрыть']"
+    - "[aria-label='Close']"
+  hide_selectors:
+    - ".jivo-chat"
+    - ".jivo-iframe-container"
+    - ".grecaptcha-badge"
+  remove_selectors: []
+
+report:
+  title: "Визуальный анализ сайта Gelikon"
+  open_after_finish: true
+
+# Полный тест оформления заказа. За один запуск создаётся только один заказ.
+order_flow:
+  enabled: true
+  checkout_url: "/checkout/"
+  payment_method: "cod"
+  place_order_selector: "#place_order"
+  success_url_contains: "/order-received/"
+  wait_before_fill_ms: 3500
+  wait_after_fill_ms: 5000
+  submit_timeout_ms: 90000
+  wait_after_submit_ms: 3000
+  order_comments: "Автоматический тестовый заказ из Site Visual Analyzer. Можно удалить."
+  billing:
+    first_name: "Тест"
+    last_name: "Заказ"
+    company: ""
+    country: "RU"
+    state: ""
+    city: "Москва"
+    address_1: "Тестовая улица, 1"
+    address_2: ""
+    postcode: "101000"
+    phone: "+79990000000"
+    # Лучше задать реальный адрес тестового ящика в credentials.yaml.
+    email: ""
+
+# Получение письма о заказе через IMAP.
+# Доступы хранятся только в credentials.yaml.
+email_capture:
+  enabled: false
+  imap_host: ""
+  imap_port: 993
+  mailbox: "INBOX"
+  username: ""
+  password: ""
+  wait_timeout_seconds: 90
+  poll_interval_seconds: 5
+  search_last_messages: 40
+  subject_contains: ""
+  sender_contains: ""
