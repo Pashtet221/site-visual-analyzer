@@ -146,20 +146,22 @@ order_flow:
     address_2: ""
     postcode: "101000"
     phone: "+79990000000"
-    # Лучше задать реальный адрес тестового ящика в credentials.yaml.
+    # Можно указать тестовый email; IMAP-доступ к нему не нужен.
     email: ""
 
-# Получение письма о заказе через IMAP.
-# Доступы хранятся только в credentials.yaml.
-email_capture:
-  enabled: false
-  imap_host: ""
-  imap_port: 993
-  mailbox: "INBOX"
-  username: ""
-  password: ""
-  wait_timeout_seconds: 90
-  poll_interval_seconds: 5
-  search_last_messages: 40
-  subject_contains: ""
-  sender_contains: ""
+# Отрисовка шаблонов писем WooCommerce напрямую через встроенный предпросмотр.
+# IMAP/SMTP не нужны: анализатор авторизуется в WordPress, открывает preview_woocommerce_mail
+# и сохраняет HTML основных WooCommerce email как локальные страницы для скриншотов.
+woocommerce_email_capture:
+  enabled: true
+  settings_url: "/wp-admin/admin.php?page=wc-settings&tab=email"
+  wait_after_open_ms: 1200
+  wait_after_preview_ms: 500
+  emails:
+    - {type: "new_order", name: "Новый заказ (администратору)"}
+    - {type: "customer_on_hold_order", name: "Заказ получен / ожидание оплаты (клиенту)"}
+    - {type: "customer_processing_order", name: "Заказ в обработке (клиенту)"}
+    - {type: "customer_completed_order", name: "Выполненный заказ (клиенту)"}
+    - {type: "customer_invoice", name: "Счёт / ожидание оплаты (клиенту)"}
+    - {type: "customer_refunded_order", name: "Возврат средств (клиенту)"}
+    - {type: "cancelled_order", name: "Отменённый заказ (администратору)"}

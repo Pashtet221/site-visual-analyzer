@@ -163,27 +163,29 @@ order_flow:
 ./run.sh --clean --skip-order
 ```
 
-## Скриншот письма о заказе
+## Скриншоты WooCommerce email без IMAP
 
-Анализатор может подключиться к тестовому почтовому ящику по IMAP, найти письмо по номеру созданного заказа, сохранить его HTML и добавить в общий отчёт.
+Анализатор больше не ждёт доставку письма в почтовый ящик. После создания тестового заказа он авторизуется в WordPress, открывает встроенный предпросмотр WooCommerce email, сохраняет HTML шаблонов локально и добавляет их в общий отчёт как обычные страницы.
 
-В `credentials.yaml`:
+Преимущества:
+
+- не нужны IMAP и SMTP;
+- не нужно ждать доставку письма;
+- результат не зависит от почтового сервера;
+- можно снять несколько основных шаблонов за один запуск.
+
+Настройки находятся в `config.yaml`:
 
 ```yaml
-email_capture:
+woocommerce_email_capture:
   enabled: true
-  imap_host: "imap.example.com"
-  imap_port: 993
-  username: "test@example.com"
-  password: "пароль приложения"
-  mailbox: "INBOX"
+  settings_url: "/wp-admin/admin.php?page=wc-settings&tab=email"
+  emails:
+    - {type: "new_order", name: "Новый заказ (администратору)"}
+    - {type: "customer_processing_order", name: "Заказ в обработке (клиенту)"}
 ```
 
-Email в `order_flow.billing.email` должен совпадать с ящиком, который проверяется через IMAP.
-
-Для Gmail обычно нужен пароль приложения, а не основной пароль аккаунта. Для Яндекс Почты, Mail.ru и корпоративной почты также может потребоваться отдельный пароль приложения и включённый доступ по IMAP.
-
-Если `email_capture.enabled: false`, заказ и страница «Заказ принят» всё равно будут проверены, но письмо в отчёт не попадёт.
+Для работы достаточно `auth.username` и `auth.password` в `credentials.yaml` с доступом к WooCommerce в WordPress.
 
 ## Медленная страница checkout
 

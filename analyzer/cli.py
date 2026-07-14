@@ -11,9 +11,9 @@ from playwright.async_api import async_playwright
 
 from .capture import capture_page, login_if_needed, make_context, prepare_cart
 from .discovery import discover_pages
-from .email_capture import fetch_order_email
 from .models import PageTarget
 from .order_flow import create_test_order
+from .woocommerce_email_capture import render_woocommerce_email_previews
 from .report import build_html_report, write_json
 from .utils import ensure_dir, normalize_url
 
@@ -154,20 +154,27 @@ async def run(arguments):
 
         await context.close()
 
-        # Email is fetched after WooCommerce has generated it. IMAP polling runs in a worker thread.
-        if created_order and config.get('email_capture', {}).get('enabled'):
+        # WooCommerce email previews are rendered directly from templates in wp-admin.
+        # This avoids IMAP/SMTP polling and does not depend on mail delivery.
+        if config.get('woocommerce_email_capture', {}).get('enabled'):
+            context = await make_context(browser, config['devices']['desktop'], config)
+            email_page = await context.new_page()
             try:
-                print('Ожидание письма о заказе...')
-                email_path = await asyncio.to_thread(
-                    fetch_order_email, config, created_order.order_number, output_dir
+                print('Отрисовка шаблонов писем WooCommerce...')
+                rendered_emails = await render_woocommerce_email_previews(
+                    email_page, config, output_dir,
+                    created_order.order_number if created_order else '',
                 )
-                if email_path:
-                    targets = merge(targets, [
-                        PageTarget('Письмо о заказе', email_path.resolve().as_uri(), 'order-email', 'imap')
-                    ])
-                    print('Письмо найдено и добавлено в отчёт.')
+                targets = merge(targets, [
+                    PageTarget(item.name, item.path.resolve().as_uri(), 'woocommerce-email', item.email_type)
+                    for item in rendered_emails
+                ])
+                if rendered_emails:
+                    print('Шаблоны писем добавлены в отчёт:', len(rendered_emails))
             except Exception as exc:
-                print('Ошибка получения письма:', exc)
+                print('Ошибка отрисовки писем WooCommerce:', exc)
+            finally:
+                await context.close()
 
         write_json(output_dir / 'pages.json', [item.to_dict() for item in targets])
         print('Найдено страниц:', len(targets))
