@@ -151,12 +151,6 @@ order_flow:
 
 
 
-# Локальные макеты гарантируют скриншоты ключевых экранов для проверки вёрстки,
-# даже если сайт не дал оформить заказ или wp-admin не отдал preview письма.
-fallback_pages:
-  order_received: true
-  order_email: true
-
 # Получение реального письма, отправленного WooCommerce после оформления заказа.
 # Если включить этот блок и указать IMAP-доступ в credentials.yaml, анализатор дождётся
 # письма по номеру созданного заказа, сохранит его как локальную HTML-страницу
@@ -179,14 +173,8 @@ email_capture:
 # и сохраняет HTML основных WooCommerce email как локальные страницы для скриншотов.
 woocommerce_email_capture:
   enabled: true
-  settings_url: "/wp-admin/admin.php?page=wc-settings&tab=email"
+  settings_url: "/wp-admin/admin.php?page=wc-settings&tab=email&section=wc_email_new_order"
   wait_after_open_ms: 1200
   wait_after_preview_ms: 500
   emails:
     - {type: "new_order", name: "Новый заказ (администратору)"}
-    - {type: "customer_on_hold_order", name: "Заказ получен / ожидание оплаты (клиенту)"}
-    - {type: "customer_processing_order", name: "Заказ в обработке (клиенту)"}
-    - {type: "customer_completed_order", name: "Выполненный заказ (клиенту)"}
-    - {type: "customer_invoice", name: "Счёт / ожидание оплаты (клиенту)"}
-    - {type: "customer_refunded_order", name: "Возврат средств (клиенту)"}
-    - {type: "cancelled_order", name: "Отменённый заказ (администратору)"}
